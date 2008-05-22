@@ -1,31 +1,33 @@
 textmate
 ========
 
-A binary that provides package management for TextMate.
+Provides package management for TextMate.
+
+Installation
+------------
+###`sudo gem install wycats-textmate --source=http://gems.github.com`
 
 Usage
 =====
 
-`textmate [COMMAND] [*PARAMS]`
+###`textmate [COMMAND] [*PARAMS]`
 
-Textmate bundles are automatically reloaded after install or uninstall operations.
+Commands
+-------
+###`remote [SEARCH] [--source=SOURCE] [--verbose]`
+Lists all the matching remote bundles from the matching source.
 
-`textmate remote [SEARCH]`
-------------------------
+###`list [SEARCH]`
+lists all the matching bundles installed locally.
 
-List all of the available bundles in the remote repository that have a substring `search`. By default, list all bundles.
+###`install NAME [--source=SOURCE] [--verbose]`
+Install a bundle from the matching source.
 
-`textmate list`
---------------------
+###`uninstall NAME`
+Uninstall a bundle. Moves the bundle `NAME.tmbundle` to the trash from every local bundle path
 
-List all of the bundles that are installed on the local system.
+###`reload`
+Tell TextMate to Reload all Bundles from the filesystem. Textmate bundles are automatically reloaded after `install` or `uninstall` operations.
 
-`textmate install NAME [SOURCE]`
------------------------
-
-Installs a bundle from the remote repository. SOURCE filters known remote bundle locations. 
-
-`textmate uninstall NAME`
--------------------------
-
-Uninstalls a bundle from the local repository.
+###`help [TASK]`
+describe available tasks or one specific task
