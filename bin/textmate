@@ -15,10 +15,21 @@ class TextmateInstaller < Thor
     remote_bundle_locations(opts['source']).each do |name,location|
       puts "\n" << name.to_s << " Remote Bundles\n" << name.to_s.gsub(/./,'-') << '---------------'
       
-      results = %x[svn list #{e_sh location[:url]}] if location[:scm]==:svn
-      results = github(location[:url], limit) if location[:scm]==:github
+      if location[:scm]==:svn
+        results = %x[svn list #{e_sh location[:url]}]
+        puts results.map {|x| x.split(".")[0]}.select {|x| x =~ limit}.join("\n") if results
+      end
+      
+      if location[:scm]==:github
+        results = github(location[:url], limit)
+        # puts *results.map{|x| [ x[:desc], x[:url] ] }
+        # p results
+        results.sort.each do |k,x|
+          puts k.ljust(24) << x[:url], 
+          x[:desc].gsub(/^/,"                          ")# << "\n\n"
+        end
+      end
       # TODO: List the version number somehow. Maybe the Subversion revision number. But what do you do for Git? The Date?
-      puts results.map {|x| x.split(".")[0]}.select {|x| x =~ limit}.join("\n") if results
       
       puts 'git remotes not implemented yet' if location[:scm]==:git
     end
@@ -133,9 +144,19 @@ class TextmateInstaller < Thor
   end
   
   def github(url, search)
+    require 'cgi'
     # p %x[curl --silent '#{url}+#{search}'].scan(%r`href="(.*tmbundle/tree)"`)
-    res = %x[cat '/Users/taylott/Desktop/textmate stdin fkVBIW.html']
-    p res.scan(%r`href="([^"]+tmbundle/tree)".*?class="desc"[^>]*>(.*?)</td`im).map{|r| {r[0].sub('/tree','').sub(/^.*\//,'') => {:desc => r[1], :url => "git://github.com" + r[0].gsub(/\/tree$/,'')}} }
+    hsh = {}
+    res = %x[cat '/Users/taylott/Desktop/github_search.html']
+    res.scan(%r`href="([^"]+tmbundle/tree)".*?class="desc"[^>]*>(.*?)</td`im).each do |r|
+      hsh.merge!({
+        r[0].sub('/tree','').sub(/^.*\//,'').sub('-tmbundle','') => {
+          :desc => CGI::unescapeHTML(r[1]), 
+          :url  => "git://github.com" + r[0].gsub(/\/tree$/,'')
+        }
+      })
+    end
+    hsh
   end
   
   
