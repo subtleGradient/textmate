@@ -10,14 +10,14 @@ class TextmateInstaller < Thor
   desc "remote [SEARCH]", "Lists all the matching remote bundles"
   method_options 'verbose' => :boolean, 'source' => :optional
   def remote(limit = "", opts={})
-    limit = Regexp.new(".*#{limit}.*", "i")
+    regex = Regexp.new(".*#{limit}.*", "i")
     
     remote_bundle_locations(opts['source']).each do |name,location|
       puts "\n" << name.to_s << " Remote Bundles\n" << name.to_s.gsub(/./,'-') << '---------------'
       
       if location[:scm]==:svn
         results = %x[svn list #{e_sh location[:url]}]
-        puts results.map {|x| x.split(".")[0]}.select {|x| x =~ limit}.join("\n") if results
+        puts results.map {|x| x.split(".")[0]}.select {|x| x =~ regex}.join("\n") if results
       end
       
       if location[:scm]==:github
@@ -144,10 +144,19 @@ class TextmateInstaller < Thor
   end
   
   def github(url, search)
+    require "net/http"
+    require "uri"
     require 'cgi'
-    # p %x[curl --silent '#{url}+#{search}'].scan(%r`href="(.*tmbundle/tree)"`)
     hsh = {}
-    res = %x[cat '/Users/taylott/Desktop/github_search.html']
+    
+    puts "Fetching page 1"
+    res = Net::HTTP.get(URI.parse("#{url}+#{search}"))
+    
+    res.scan(/page=(\d+)/).flatten.uniq.each do|pagenum|
+      puts "Fetching page #{pagenum}"
+      res << Net::HTTP.get(URI.parse("#{url}+#{search}&page=#{pagenum}"))
+    end
+    
     res.scan(%r`href="([^"]+tmbundle/tree)".*?class="desc"[^>]*>(.*?)</td`im).each do |r|
       hsh.merge!({
         r[0].sub('/tree','').sub(/^.*\//,'').sub('-tmbundle','') => {
@@ -166,6 +175,10 @@ class TextmateInstaller < Thor
   	str.to_s.gsub(/(?=[^a-zA-Z0-9_.\/\-\x7F-\xFF\n])/, '\\').gsub(/\n/, "'\n'").sub(/^$/, "''")
   end
   
+  def ask()
+    print "Choose one: \a"
+    gets.chomp
+  end
 end
 
 # TODO: create a "monument to personal cleverness" by class-izing everything?
