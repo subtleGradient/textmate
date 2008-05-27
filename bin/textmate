@@ -99,13 +99,12 @@ class TextmateInstaller < Thor
         %x[osascript -e 'tell application "Finder" to move the POSIX file "#{bundle_path}" to trash']
       end
     end
-    puts "Reloading bundles..."
     reload
-    puts "Done."
   end
   
   desc "reload", "Tell TextMate to Reload all Bundles from the filesystem. " + 'Textmate bundles are automatically reloaded after `install` or `uninstall` operations.'
   def reload
+    puts "Reloading bundles..."
     %x[osascript -e 'tell app "TextMate" to reload bundles']
   end
   
