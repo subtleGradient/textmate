@@ -11,14 +11,14 @@ class TextmateInstaller < Thor
   # CHANGED: renamed list to remote. Could there be a better name?
   desc "remote [SEARCH]", "Lists all the matching remote bundles"
   def remote(search_term = "")
-    search_term = Regexp.new(".*#{search_term}.*", "i")
+    search_term_regex = Regexp.new(".*#{search_term}.*", "i")
     
     remote_bundle_locations.each do |name,location|
       puts "\n" << name.to_s << " Remote Bundles\n" << name.to_s.gsub(/./,'-') << '---------------'
       
       results = case location[:scm]
                 when :svn
-                  %x[svn list #{e_sh location[:url]}].map {|x| x.split(".")[0]}.select {|x| x =~ search_term}.join("\n")
+                  %x[svn list #{e_sh location[:url]}].map {|x| x.split(".")[0]}.select {|x| x =~ search_term_regex}.join("\n")
                 when :git
                   'git remotes not implemented yet'
                 when :github
@@ -37,12 +37,12 @@ class TextmateInstaller < Thor
   
   desc "list [SEARCH]", "lists all the bundles installed locally"
   def list(search_term = "")
-    search_term = Regexp.new(".*#{search_term}.*", "i")
+    search_term_regex = Regexp.new(".*#{search_term}.*", "i")
     
     local_bundle_paths.each do |name,bundles_path|
       puts "\n" << name.to_s << " Bundles\n" << name.to_s.gsub(/./,'-') << '--------'
       puts Dir["#{e_sh bundles_path}/*.tmbundle"].map {|x| x.split("/").last.split(".").first}.
-        select {|x| x =~ search_term}.join("\n")
+        select {|x| x =~ search_term_regex}.join("\n")
     end
   end
   
@@ -69,14 +69,14 @@ class TextmateInstaller < Thor
               when 0
                 'echo "Sorry, no such bundle found"'
               when 1
-                %[git clone #{e_sh repos.first['url'].sub('http', 'git') + '.git'} #{e_sh install_bundles_path}/#{e_sh bundle_name}.tmbundle 2>&1]
+                %[git clone #{e_sh repos.first['url'].sub('http', 'git') + '.git'} #{e_sh install_bundles_path}/#{e_sh normalize_github_repo_name(repos.first['name'])} 2>&1]
               else
                 puts "Multiple bundles with that name found. Please choose which one you want to install:"
                 repos.each_with_index {|repo, idx|
                   puts "%d: %s by %s" %
                   [
                     idx + 1,
-                    normalize_github_repo_name(repo['name']),
+                    normalize_github_repo_name(repo['name']).ljust(40),
                     repo['url'][/github\.com\/([a-zA-Z0-9]+)\//, 1]
                   ]
                 }
@@ -88,8 +88,7 @@ class TextmateInstaller < Thor
                   print "Sorry, invalid choice. Please enter a valid number or Ctrl+C to stop: "
                   choice = Integer(STDIN.gets.chomp) rescue nil
                 end
-                
-                %[git clone #{e_sh repos[choice - 1]['url'].sub('http', 'git') + '.git'} #{e_sh install_bundles_path}/#{e_sh bundle_name}.tmbundle 2>&1]
+                %[git clone #{e_sh repos[choice - 1]['url'].sub('http', 'git') + '.git'} #{e_sh install_bundles_path}/#{e_sh normalize_github_repo_name(repos[choice - 1]['name'])} 2>&1]
               end
             end
       
@@ -169,13 +168,13 @@ class TextmateInstaller < Thor
   
   # Does the opposite of normalize_github_repo_name
   def denormalize_github_repo_name(name)
-    name += " tmbundle" unless name =~ / tmbundle$/
     name.split(' ').each{|part| part.downcase!}.join(' ').gsub(' ', '-')
   end
   
   def find_github_bundles(search_term)
-    YAML.load(open('http://github.com/api/v1/yaml/search/tmbundle'))['repositories'].
-      find_all{|result| result['name'].match(search_term)}.
+    require 'cgi'
+    YAML.load(open("http://github.com/api/v1/yaml/search/#{CGI::escape search_term}"))['repositories'].
+      find_all{|result| result['name'].match('tmbundle')}.
       sort{|a,b| a['name'] <=> b['name']}
   end
   
